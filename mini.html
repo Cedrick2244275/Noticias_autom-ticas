@@ -1,0 +1,119 @@
+<!-- templates/mini.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Noticias Mini</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: transparent;
+            padding: 0;
+            margin: 0;
+            overflow: hidden;
+        }
+        .mini-form {
+            display: flex;
+            align-items: center;
+            padding: 5px;
+        }
+        .form-control {
+            height: 30px;
+            font-size: 12px;
+            padding: 0.25rem 0.5rem;
+        }
+        .btn {
+            height: 30px;
+            font-size: 12px;
+            padding: 0.25rem 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .status {
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="mini-form">
+        <input type="text" class="form-control me-1" id="topic" placeholder="Tema">
+        <input type="number" class="form-control me-1" id="max_results" value="10" min="5" style="width: 50px;">
+        <button type="button" class="btn btn-primary" id="generateBtn">Generar</button>
+    </div>
+    <div class="status" id="status">Procesando...</div>
+    <div class="status" id="resultLink" style="display: none;">
+        <a href="#" target="_blank" class="btn btn-sm btn-success">Ver</a>
+    </div>
+
+    <script>
+        document.getElementById('generateBtn').addEventListener('click', function() {
+            const topic = document.getElementById('topic').value;
+            const maxResults = document.getElementById('max_results').value;
+
+            if (!topic) {
+                alert('Ingrese un tema');
+                return;
+            }
+
+            // Mostrar estado
+            document.getElementById('status').style.display = 'block';
+            document.getElementById('resultLink').style.display = 'none';
+
+            // Deshabilitar botón
+            this.disabled = true;
+
+            // Crear FormData
+            const formData = new FormData();
+            formData.append('topic', topic);
+            formData.append('max_results', maxResults);
+
+            // Enviar solicitud
+            fetch('/generate', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'started') {
+                    checkStatus(data.task_id);
+                } else {
+                    document.getElementById('status').innerText = data.message;
+                    document.getElementById('generateBtn').disabled = false;
+                }
+            })
+            .catch(error => {
+                document.getElementById('status').innerText = 'Error';
+                document.getElementById('generateBtn').disabled = false;
+            });
+        });
+
+        function checkStatus(taskId) {
+            fetch('/status/' + taskId)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('status').innerText = data.message;
+
+                if (data.status === 'running') {
+                    setTimeout(() => checkStatus(taskId), 2000);
+                } else {
+                    document.getElementById('generateBtn').disabled = false;
+
+                    if (data.page_url) {
+                        const link = document.querySelector('#resultLink a');
+                        link.href = data.page_url;
+                        document.getElementById('resultLink').style.display = 'block';
+                    }
+                }
+            })
+            .catch(error => {
+                document.getElementById('status').innerText = 'Error';
+                document.getElementById('generateBtn').disabled = false;
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,174 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automatización de Noticias para Notion</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding: 20px;
+            background-color: #f7f7f7;
+        }
+        .card {
+            margin-bottom: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header-img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 5px;
+        }
+        .result-section {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="mb-0">Automatización de Noticias para Notion</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="newsForm">
+                            <div class="mb-3">
+                                <label for="topic" class="form-label">Tema de búsqueda</label>
+                                <input type="text" class="form-control" id="topic" name="topic" required
+                                       placeholder="Ejemplo: Inteligencia Artificial, Deportes, Economía">
+                            </div>
+                            <div class="mb-3">
+                                <label for="max_results" class="form-label">Número máximo de resultados</label>
+                                <input type="number" class="form-control" id="max_results" name="max_results"
+                                       min="5" max="100" value="10">
+                                <div class="form-text">Mayor número = más artículos (hasta 100 máximo)</div>
+                            </div>
+                            <button type="submit" class="btn btn-primary" id="generateBtn">
+                                Generar Informe
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card result-section" id="resultSection">
+                    <div class="card-header bg-info text-white">
+                        <h4 class="mb-0">Estado del Proceso</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="progress mb-3">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
+                                 style="width: 100%"></div>
+                        </div>
+                        <div id="statusMessage" class="alert alert-info">
+                            Iniciando proceso...
+                        </div>
+                        <div id="resultLink" style="display: none;">
+                            <a href="#" target="_blank" class="btn btn-success btn-block">
+                                Ver Informe en Notion
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center mt-3">
+                    <a href="/config" class="btn btn-outline-secondary btn-sm">Configuración</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.getElementById('newsForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            // Mostrar sección de resultados
+            document.getElementById('resultSection').style.display = 'block';
+            document.getElementById('statusMessage').innerText = 'Iniciando proceso...';
+            document.getElementById('resultLink').style.display = 'none';
+
+            // Deshabilitar botón
+            document.getElementById('generateBtn').disabled = true;
+
+            // Recopilar datos del formulario
+            const formData = new FormData(this);
+
+            // Enviar solicitud al servidor
+            fetch('/generate', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'started') {
+                    checkStatus(data.task_id);
+                } else {
+                    updateStatus('error', data.message);
+                }
+            })
+            .catch(error => {
+                updateStatus('error', 'Error en la solicitud: ' + error);
+            });
+        });
+
+        function checkStatus(taskId) {
+            fetch('/status/' + taskId)
+            .then(response => response.json())
+            .then(data => {
+                updateStatus(data.status, data.message, data.page_url);
+
+                if (data.status === 'running') {
+                    // Seguir verificando cada 2 segundos
+                    setTimeout(() => checkStatus(taskId), 2000);
+                } else {
+                    // Habilitar botón de nuevo
+                    document.getElementById('generateBtn').disabled = false;
+                }
+            })
+            .catch(error => {
+                updateStatus('error', 'Error al verificar estado: ' + error);
+                document.getElementById('generateBtn').disabled = false;
+            });
+        }
+
+        function updateStatus(status, message, pageUrl = null) {
+            const statusMessage = document.getElementById('statusMessage');
+            const resultLink = document.getElementById('resultLink');
+            const progressBar = document.querySelector('.progress-bar');
+
+            // Actualizar mensaje
+            statusMessage.innerText = message;
+
+            // Actualizar clases según el estado
+            statusMessage.className = 'alert';
+            if (status === 'running') {
+                statusMessage.classList.add('alert-info');
+                progressBar.classList.add('progress-bar-animated');
+            } else if (status === 'completed') {
+                statusMessage.classList.add('alert-success');
+                progressBar.classList.remove('progress-bar-animated');
+                progressBar.style.width = '100%';
+            } else if (status === 'warning') {
+                statusMessage.classList.add('alert-warning');
+                progressBar.classList.remove('progress-bar-animated');
+                progressBar.style.width = '100%';
+            } else if (status === 'error') {
+                statusMessage.classList.add('alert-danger');
+                progressBar.classList.remove('progress-bar-animated');
+                progressBar.style.width = '100%';
+            }
+
+            // Mostrar enlace si hay URL de página
+            if (pageUrl) {
+                const linkElement = resultLink.querySelector('a');
+                linkElement.href = pageUrl;
+                resultLink.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,151 @@
+<!-- templates/config.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuración - Automatización de Noticias</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding: 20px;
+            background-color: #f7f7f7;
+        }
+        .card {
+            margin-bottom: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="mb-0">Configuración</h3>
+                    </div>
+                    <div class="card-body">
+                        {% if not tokens_configured %}
+                        <div class="alert alert-warning">
+                            <strong>¡Atención!</strong> Algunos tokens no están configurados.
+                            Complete la información a continuación.
+                        </div>
+                        {% endif %}
+
+                        <form id="configForm">
+                            <div class="mb-3">
+                                <label for="notion_token" class="form-label">Token de Notion API</label>
+                                <input type="password" class="form-control" id="notion_token" name="notion_token"
+                                       placeholder="secret_...">
+                                <div class="form-text">
+                                    Comienza con "secret_". Más información:
+                                    <a href="https://www.notion.so/my-integrations" target="_blank">Notion Integrations</a>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="notion_db_id" class="form-label">ID de Base de Datos Notion</label>
+                                <input type="text" class="form-control" id="notion_db_id" name="notion_db_id"
+                                       placeholder="1234abcd5678..." value="{{ notion_db_id }}">
+                                <div class="form-text">
+                                    ID de 32 caracteres que aparece en la URL de tu base de datos
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="news_api_key" class="form-label">API Key de NewsAPI</label>
+                                <input type="password" class="form-control" id="news_api_key" name="news_api_key"
+                                       placeholder="abcd1234...">
+                                <div class="form-text">
+                                    Consigue una en <a href="https://newsapi.org/register" target="_blank">NewsAPI.org</a>
+                                </div>
+                            </div>
+
+                            <div class="mt-4">
+                                <button type="submit" class="btn btn-primary" id="saveBtn">
+                                    Guardar Configuración
+                                </button>
+                                <a href="/" class="btn btn-outline-secondary ms-2">Volver</a>
+                            </div>
+                        </form>
+
+                        <div class="mt-4">
+                            <h5>Códigos para incrustar en Notion</h5>
+                            <div class="mb-3">
+                                <label class="form-label">iframe completo:</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" readonly
+                                           value='<iframe src="http://tu-servidor:5000/embed" width="100%" height="120px" frameborder="0"></iframe>'>
+                                    <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard(this)">
+                                        Copiar
+                                    </button>
+                                </div>
+                                <div class="form-text">Iframe para insertar el formulario completo</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Mini botón:</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" readonly
+                                           value='<iframe src="http://tu-servidor:5000/mini" width="100%" height="60px" frameborder="0"></iframe>'>
+                                    <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard(this)">
+                                        Copiar
+                                    </button>
+                                </div>
+                                <div class="form-text">Versión mínima para botones</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.getElementById('configForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            // Deshabilitar botón
+            document.getElementById('saveBtn').disabled = true;
+
+            // Recopilar datos del formulario
+            const formData = new FormData(this);
+
+            // Enviar solicitud al servidor
+            fetch('/save_config', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert('Configuración guardada correctamente');
+                } else {
+                    alert('Error: ' + data.message);
+                }
+                document.getElementById('saveBtn').disabled = false;
+            })
+            .catch(error => {
+                alert('Error en la solicitud: ' + error);
+                document.getElementById('saveBtn').disabled = false;
+            });
+        });
+
+        function copyToClipboard(button) {
+            const input = button.parentElement.querySelector('input');
+            input.select();
+            document.execCommand('copy');
+
+            // Cambiar texto del botón temporalmente
+            const originalText = button.innerText;
+            button.innerText = '¡Copiado!';
+            setTimeout(() => {
+                button.innerText = originalText;
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
